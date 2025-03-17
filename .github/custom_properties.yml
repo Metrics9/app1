@@ -1,0 +1,6 @@
+# Example custom-properties.yml
+filter_properties:
+  appname: "app1"
+  hosted-platform: "sonar"
+  tech: "java"
+  unit-test: true
