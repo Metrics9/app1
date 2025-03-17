@@ -1,0 +1,73 @@
+name: Automate based on Custom Properties
+
+on:
+  pull_request:
+    types: [opened, edited]
+
+jobs:
+  custom_property_update:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Install yq for parsing YAML
+      run: |
+        sudo apt-get install -y python3-pip
+        pip3 install yq
+
+    - name: Read custom_properties.yml
+      id: read_properties
+      run: |
+        # Path to your custom properties YAML file
+        file_path=".github/custom_properties.yml"
+        if [ -f "$file_path" ]; then
+          # Read values from YAML
+          appname=$(yq eval '.filter_properties.appname' "$file_path")
+          hosted_platform=$(yq eval '.filter_properties."hosted-platform"' "$file_path")
+          tech=$(yq eval '.filter_properties.tech' "$file_path")
+          unit_test=$(yq eval '.filter_properties."unit-test"' "$file_path")
+
+          echo "::set-output name=appname::$appname"
+          echo "::set-output name=hosted_platform::$hosted_platform"
+          echo "::set-output name=tech::$tech"
+          echo "::set-output name=unit_test::$unit_test"
+        else
+          echo "custom_properties.yml not found!"
+          exit 1
+        fi
+
+    - name: Update PR with custom labels and milestone
+      run: |
+        pr_number=$(jq --raw-output .pull_request.number $GITHUB_EVENT_PATH)
+        appname="${{ steps.read_properties.outputs.appname }}"
+        tech="${{ steps.read_properties.outputs.tech }}"
+        unit_test="${{ steps.read_properties.outputs.unit_test }}"
+
+        # Add labels
+        if [[ -n "$appname" ]]; then
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --data '{"labels": ["'"$appname"'"]}' \
+            "https://api.github.com/repos/${{ github.repository }}/issues/$pr_number/labels"
+        fi
+
+        if [[ -n "$tech" ]]; then
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --data '{"labels": ["'"$tech"'"]}' \
+            "https://api.github.com/repos/${{ github.repository }}/issues/$pr_number/labels"
+        fi
+
+        # Set milestone if unit-test is true
+        if [[ "$unit_test" == "true" ]]; then
+          milestone="Unit Test"
+          curl -X PATCH \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --data '{"milestone": "'"$milestone"'"}' \
+            "https://api.github.com/repos/${{ github.repository }}/issues/$pr_number"
+        fi
