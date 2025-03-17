@@ -45,7 +45,7 @@ jobs:
         tech="${{ steps.read_properties.outputs.tech }}"
         unit_test="${{ steps.read_properties.outputs.unit_test }}"
 
-        # Add labels
+        # Add label
         if [[ -n "$appname" ]]; then
           curl -X POST \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
