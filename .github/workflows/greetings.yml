@@ -3,7 +3,7 @@ name: Automate based on Custom Properties
 on:
   pull_request:
     types: [opened, edited]
-
+  workflow_dispatch:
 jobs:
   custom_property_update:
     runs-on: ubuntu-latest
